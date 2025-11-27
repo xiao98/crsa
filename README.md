@@ -21,14 +21,27 @@ To run any of the following scripts run the following command: `python -m crsa.s
 ## Citation
 
 ```
-@misc{estienne2025collaborativerationalspeechact,
-      title={Collaborative Rational Speech Act: Pragmatic Reasoning for Multi-Turn Dialog}, 
-      author={Lautaro Estienne and Gabriel Ben Zenou and Nona Naderi and Jackie Cheung and Pablo Piantanida},
-      year={2025},
-      eprint={2507.14063},
-      archivePrefix={arXiv},
-      primaryClass={cs.CL},
-      url={https://arxiv.org/abs/2507.14063}, 
+@inproceedings{estienne-etal-2025-collaborative,
+    title = "Collaborative Rational Speech Act: Pragmatic Reasoning for Multi-Turn Dialog",
+    author = "Estienne, Lautaro  and
+      Zenou, Gabriel Ben  and
+      Naderi, Nona  and
+      Cheung, Jackie CK  and
+      Piantanida, Pablo",
+    editor = "Christodoulopoulos, Christos  and
+      Chakraborty, Tanmoy  and
+      Rose, Carolyn  and
+      Peng, Violet",
+    booktitle = "Proceedings of the 2025 Conference on Empirical Methods in Natural Language Processing",
+    month = nov,
+    year = "2025",
+    address = "Suzhou, China",
+    publisher = "Association for Computational Linguistics",
+    url = "https://aclanthology.org/2025.emnlp-main.1145/",
+    doi = "10.18653/v1/2025.emnlp-main.1145",
+    pages = "22520--22534",
+    ISBN = "979-8-89176-332-6",
+    abstract = "As AI systems take on collaborative roles, they must reason about shared goals and beliefs{---}not just generate fluent language. The Rational Speech Act (RSA) framework offers a principled approach to pragmatic reasoning, but existing extensions face challenges in scaling to multi-turn, collaborative scenarios. In this paper, we introduce Collaborative Rational Speech Act (CRSA), an information-theoretic (IT) extension of RSA that models multi-turn dialog by optimizing a gain function adapted from rate-distortion theory. This gain is an extension of the gain model that is maximized in the original RSA model but takes into account the scenario in which both agents in a conversation have private information and produce utterances conditioned on the dialog. We demonstrate the effectiveness of CRSA on referential games and template-based doctor{--}patient dialogs in the medical domain. Empirical results show that CRSA yields more consistent, interpretable, and collaborative behavior than existing baselines{---}paving the way for more pragmatic and socially aware language agents."
 }
 ```
 

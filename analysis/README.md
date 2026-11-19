@@ -28,7 +28,7 @@ Table 1, alpha = 2.5, 1703 dialogs with at least one intermediate turn:
 | uniform speaker | | 15.362 = sqrt(2 * 118) |
 
 1. `llm_models/rsa.py`, `Speaker.update`: `prior / prior_a` divides an (A, B, Y) array by an (A, 1)
-   array, which broadcasts along B. On MDDial the result has shape (12, 12, 12) and sums to 12-21
+   array, which broadcasts along B. On MDDial the result has shape (12, 12, 12) and sums to 6-22
    per meaning. With `prior / prior_a[:, :, np.newaxis]` RSA gives 15.362.
 2. `llm_models/literal.py`, `LLMLiteral.run_turn`: the reported speaker distribution is a column of
    the jointly normalised lexicon; on patient turns it sums to about 0.08.
@@ -38,3 +38,5 @@ Table 1, alpha = 2.5, 1703 dialogs with at least one intermediate turn:
 
 The line in (1) is also present in `naive_models`. Rerunning the reference game with the same
 change leaves the conclusions of Figure 2 unchanged (CRSA reaches 1.0 at turn 6, YRSA stays near 0.59).
+
+A write-up with the derivations is in `analysis/note/mddial_note.pdf`.

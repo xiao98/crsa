@@ -1,0 +1,210 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[margin=2.4cm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{xcolor}
+\usepackage[colorlinks=true,urlcolor=blue!60!black,linkcolor=black]{hyperref}
+\setlength{\parskip}{0.5em}
+\setlength{\parindent}{0pt}
+\newcommand{\code}[1]{\texttt{\small #1}}
+
+\title{\vspace{-1.5em}Notes on the MDDial experiment of CRSA (Table~1)}
+\author{Hao XIAO \\ {\small M2 Math\'ematiques et Intelligence Artificielle, Universit\'e Paris-Saclay}}
+\date{November 2026}
+
+\begin{document}
+\sloppy
+\maketitle
+
+These notes were written while reproducing \emph{Collaborative Rational Speech Act: Pragmatic
+Reasoning for Multi-Turn Dialog} (Estienne et al., EMNLP 2025) from the public repository.
+Both experiments reproduce exactly from the released code: Figure~2, and Table~1 from the cached
+LLM predictions. The observations below concern Table~1 only. The conclusions of the reference
+game (Figure~2) are unchanged by anything discussed here (Section~\ref{sec:refgame}).
+I may well be missing something about the intended setup, and would be glad to be corrected.
+
+\section{Summary}
+
+Table~\ref{tab:main} gives speaker perplexity at $\alpha = 2.5$ on the 1703 training dialogs
+that have at least one intermediate turn (out of 1878).
+
+\begin{table}[h]
+\centering
+\begin{tabular}{lrr}
+\toprule
+ & Released code & With the two changes of Sections~\ref{sec:rsa}--\ref{sec:literal} \\
+\midrule
+CRSA & 15.362 & 15.362 \\
+RSA & 15.395 & 15.362 \\
+Literal & 60.835 & 16.232 \\
+\midrule
+Uniform speaker & & $\sqrt{2 \cdot 118} = 15.362$ \\
+\bottomrule
+\end{tabular}
+\caption{Speaker perplexity on MDDial. The last row is a speaker that ignores its meaning, the
+dialog and the LLM.}
+\label{tab:main}
+\end{table}
+
+\begin{enumerate}
+\item The CRSA speaker is uniform over the utterance set on both sides, so its perplexity equals
+that of a uniform speaker (Section~\ref{sec:uniform}).
+\item In the RSA baseline, $P(m_B, y \mid m_A)$ is normalised along the wrong axis. Once corrected,
+RSA coincides with CRSA (Section~\ref{sec:rsa}).
+\item The Literal baseline reports a vector that is not normalised over utterances. Once normalised,
+its perplexity is 16.23 (Section~\ref{sec:literal}).
+\end{enumerate}
+
+\section{Setup and notation}
+
+In the released configuration, the patient is agent $A$ with $\mathcal{M}_A$ the 12 diseases, the
+doctor is agent $B$ with a single meaning ($|\mathcal{M}_B| = 1$), and $\mathcal{Y}$ is the set of
+12 diseases. The patient chooses between two utterances (yes, no) and the doctor between 118
+(one question per symptom). Costs are zero. The modelled turns of a dialog
+alternate doctor, patient, \dots, so each dialog has as many doctor turns as patient turns.
+
+The code computes, for dialog $i$ with $T_i$ modelled turns,
+\begin{equation}
+\mathrm{PPL} = \frac{1}{N} \sum_{i=1}^{N} \exp\Big( -\frac{1}{T_i} \sum_{t=1}^{T_i}
+\log S_t\big(u_t^{(i)} \mid w_t^{(i)}, m_{S_t}^{(i)}\big) \Big).
+\label{eq:ppl}
+\end{equation}
+(The formula in Section~6 of the paper has no $1/T_i$; this is only a difference of notation.)
+
+\section{The CRSA speaker is uniform}
+\label{sec:uniform}
+
+\paragraph{Observation.} In the released \code{all\_results.pkl}, the CRSA speaker distribution
+satisfies $\max_u |S_t(u) - 1/|\mathcal{U}_t|| < 10^{-16}$ on every doctor turn and
+$< 3.3 \times 10^{-3}$ on every patient turn. For a uniform speaker, each dialog contributes
+\[
+\exp\big( \tfrac12 \log 2 + \tfrac12 \log 118 \big) = \sqrt{236} \approx 15.362
+\]
+to \eqref{eq:ppl}, which is the CRSA entry of Table~1 (bootstrap 95\% interval over dialogs:
+$[15.3622, 15.3625]$). The normalised entropy of the belief over the patient's meaning is $1.000$ at every turn.
+
+\paragraph{Doctor turns.} This follows from $|\mathcal{M}_S| = 1$. With a single speaker meaning
+$m$, the listener update reads
+\[
+L^{k+1}(y \mid u, w, m_L) = \frac{B_L(m)\, P(m, m_L, y)\, S^{k+1}(u \mid w, m)}
+{\sum_{y'} B_L(m)\, P(m, m_L, y')\, S^{k+1}(u \mid w, m)} = P(y \mid m, m_L),
+\]
+which does not depend on $u$. The same holds for the literal listener of Eq.~(7), where the
+lexicon $\mathcal{L}_{u,w}(m)$ cancels in the normalisation over $y$. The speaker update then has
+an exponent that is constant in $u$, so $S(u \mid w, m) = 1/|\mathcal{U}|$. In particular the LLM
+scores of the 118 candidate questions do not enter the result.
+
+\paragraph{Patient turns.} Here the uniform solution is not forced, but it is the one reached at
+$\alpha = 2.5$. I reimplemented Eqs.~(11)--(13) independently of the repository and ran them to
+convergence on the patient turns of 200 random dialogs, with the cached LLM lexicon:
+
+\begin{center}
+\begin{tabular}{lrrrrr}
+\toprule
+$\alpha$ & 2.5 & 5 & 10 & 20 & 40 \\
+\midrule
+mean of $\max_{a,u} |S(u \mid a) - \tfrac12|$ & 0.000 & 0.000 & 0.000 & 0.178 & 0.497 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+This looks like the same effect as the remark of Section~5.2 that all iterative algorithms give
+uniform distributions for $\alpha \le 1$ in the reference game, with a larger threshold here. A
+plausible reason is that the prior couples the target only weakly to the patient's meaning:
+$P(y = a \mid m_A = a) = 0.164$ on average. Replacing the LLM lexicon by a synthetic, highly
+informative one ($P(\text{yes} \mid a) = 0.95$ if disease $a$ has the symptom and $0.05$ otherwise)
+still gives a uniform speaker at $\alpha = 2.5$. With the released CRSA code at $\alpha = 40$ the
+speaker is no longer uniform, but the patient-turn perplexity rises from 2.00 to 5.37.
+
+\paragraph{Listener.} The CRSA and RSA listeners predict the same class for all 1703 dialogs. The
+task success rate $0.085$ (bootstrap 95\% interval $[0.072, 0.099]$) is the frequency of that
+class; chance level is $1/12 = 0.083$.
+
+\section{Normalisation of \texorpdfstring{$P(m_B, y \mid m_A)$}{P(mB, y | mA)} in the RSA speaker}
+\label{sec:rsa}
+
+Eq.~(11) uses $P(m_B, y \mid m_A)$. In \code{llm\_models/rsa.py}, \code{Speaker.update} computes
+
+\begin{center}
+\code{prior\_by\_given\_a = prior / prior\_a}
+\end{center}
+
+with \code{prior} of shape $(|\mathcal{M}_A|, |\mathcal{M}_B|, |\mathcal{Y}|)$ and \code{prior\_a} of
+shape $(|\mathcal{M}_A|, 1)$. NumPy aligns trailing axes, so the division is carried out along the
+$\mathcal{M}_B$ axis. On MDDial the result has shape $(12, 12, 12)$ and
+\[
+\sum_{b, y} \texttt{prior\_by\_given\_a}[a, b, y] = P(a) \sum_{a'} \frac{1}{P(a')} =: c_a,
+\qquad c_a \in [6.0,\ 22.2],
+\]
+instead of 1. The exponent of Eq.~(11) is therefore multiplied by $c_a$, which amounts to an
+effective rationality $\alpha\, c_a \in [15, 55]$ rather than $2.5$. This is consistent with the
+table of Section~\ref{sec:uniform}: the released RSA speaker is the only one that leaves the uniform
+solution.
+
+With \code{prior / prior\_a[:, :, np.newaxis]}, the RSA speaker is uniform to within
+$3.3 \times 10^{-3}$ and its perplexity is 15.362, identical to CRSA. The CRSA speaker is not
+affected on MDDial: the first modelled turn is a doctor turn, which is uniform in any case, and
+later turns use $P(y \mid m_A, m_B)$, which is normalised correctly.
+
+\subsection{Reference game}
+\label{sec:refgame}
+
+The same line is present in the \code{naive\_models} package: in the RSA and Literal speakers,
+and in the first-turn branch of the CRSA speaker. There the prior has shape $(64, 64, 7)$ and $P(m_A)$ ranges
+from $0.003$ to $0.029$, so the division is by $P(m_A)$ indexed along the $\mathcal{M}_B$ axis. I
+reran the reference game with the same change (game size 6, $\alpha = 2.5$, 500 rounds, same seed).
+Utterances are sampled, so the two runs are not comparable round by round.
+
+\begin{center}
+\begin{tabular}{llrrrrrr}
+\toprule
+ & Turn & 1 & 2 & 3 & 4 & 5 & 6 \\
+\midrule
+CRSA & released & 0.630 & 0.856 & 0.958 & 0.992 & 1.000 & 1.000 \\
+     & changed  & 0.630 & 0.806 & 0.924 & 0.978 & 0.992 & 1.000 \\
+\midrule
+YRSA & released & 0.616 & 0.596 & 0.616 & 0.596 & 0.616 & 0.596 \\
+     & changed  & 0.586 & 0.596 & 0.586 & 0.596 & 0.586 & 0.596 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Listener accuracy changes by a few points at most for these two models, and the conclusion of
+Figure~2 is the same: CRSA reaches $1.0$ and YRSA stays near $0.59$.
+
+\section{Normalisation of the Literal speaker}
+\label{sec:literal}
+
+Eq.~(8) defines $S^0_t(u \mid m, w) \propto P_{LM}(u \mid w, \mathrm{prompt}(m))$, normalised over
+$u$. In \code{LLMLiteral.run\_turn}, the lexicon is normalised jointly,
+\[
+\mathcal{L}(u, m) = \frac{\exp \ell(u, m)}{\sum_{u', m'} \exp \ell(u', m')},
+\]
+and the reported speaker distribution is the column $\mathcal{L}(\cdot, m)$. On doctor turns
+$|\mathcal{M}_S| = 1$ and the column sums to 1. On patient turns it sums to $0.081$ on average
+(about $1/12$), which inflates the perplexity.
+
+After dividing each column by its sum, the Literal perplexity is 16.232. By role, it is 99.64 on
+doctor turns (uniform: 118) and 2.424 on patient turns (uniform: 2). So the LLM is informative on
+doctor turns and slightly worse than uniform on patient turns.
+
+\section{Reproducing these numbers}
+
+The scripts are at \url{https://github.com/xiao98/crsa/tree/mddial-analysis/analysis}. They read
+only the outputs shipped with the repository, need no GPU, and do not modify \code{src/}.
+
+\begin{center}
+\begin{tabular}{ll}
+\toprule
+Script & Content \\
+\midrule
+\code{mddial\_ci.py} & Table 1 with bootstrap intervals, perplexity by role, belief entropy \\
+\code{table1\_rsa\_fixed.py} & RSA row with the normalisation of Section~\ref{sec:rsa} \\
+\code{verify.py} & Section~\ref{sec:literal}, the reimplementation of Eqs.~(11)--(13), the $\alpha$ sweep \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\end{document}
